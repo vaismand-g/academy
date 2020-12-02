@@ -23,7 +23,7 @@ resource "aws_vpc" "dv-vpc-terra" {
 
 # Internet Gateway
 resource "aws_internet_gateway" "dv_igw" {
-  vpc_id = "${aws_vpc.dv-vpc-terra.id}"
+  vpc_id = aws_vpc.dv-vpc-terra.id
   tags {
     Name = "main"
     User = "Damian Vaisman"
