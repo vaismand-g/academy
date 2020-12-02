@@ -24,10 +24,6 @@ resource "aws_vpc" "dv-vpc-terra" {
 # Internet Gateway
 resource "aws_internet_gateway" "dv_igw" {
   vpc_id = aws_vpc.dv-vpc-terra.id
-  tags {
-    Name = "main"
-    User = "Damian Vaisman"
-  }
 }
 
 resource "aws_subnet" "dv-subnet-pub-east1a-terra" {
@@ -54,11 +50,7 @@ resource "aws_route_table" "dv-subnet-pub-terra" {
   vpc_id = aws_vpc.dv-vpc-terra.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = "${aws_internet_gateway.dv_igw.id}"
-  }
-  tags {
-    Name = "dv-subnet-pub-terra"
-    User = "Damian Vaisman"
+    gateway_id = aws_internet_gateway.dv_igw.id
   }
 }
 
@@ -72,31 +64,6 @@ resource "aws_route_table_association" "b" {
   subnet_id      = "dv-subnet-pub-east1b-terra"
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
-
-resource "aws_launch_template" "dv-launchtemplate-terraf" {
-  name = "dv-launchtemplate-terraf"
-  image_id = "ami-04d29b6f966df1537"
-  instance_initiated_shutdown_behavior = "terminate"
-  instance_type = "t2.micro"
-  key_name = "dv-keypair-terra"
-
-  network_interfaces {
-    associate_public_ip_address = true
-    security_groups = [sg-05f60eab9021525cb]
-  }
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name = "test"
-      User = "Damian Vaisman"
-    }
-  }
-
-  user_data = file("install_apache.sh")
-}
-
-data "aws_availability_zones" "all" {}
 
 resource "aws_security_group" "dv-sg-ec2-8080-terra" {
   name = "dv-sg-ec2-8080-terra"
@@ -129,11 +96,37 @@ resource "aws_security_group" "dv-sg-elb-80-terra" {
   }
 }
 
+
+resource "aws_launch_template" "dv-launchtemplate-terraf" {
+  name = "dv-launchtemplate-terraf"
+  image_id = "ami-04d29b6f966df1537"
+  instance_initiated_shutdown_behavior = "terminate"
+  instance_type = "t2.micro"
+  key_name = "dv-keypair-terra"
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups = [aws_security_group.dv-sg-ec2-8080-terra.id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "test"
+      User = "Damian Vaisman"
+    }
+  }
+
+  user_data = file("install_apache.sh")
+}
+
+data "aws_availability_zones" "all" {}
+
+
 resource "aws_elb" "dv-elb-terra" {
   name               = "dv-elb-terra"
   security_groups    = [aws_security_group.dv-sg-elb-80-terra.id]
   availability_zones = data.aws_availability_zones.all.names
-
   health_check {
     target              = "HTTP:8080/"
     interval            = 30
@@ -159,10 +152,9 @@ resource "aws_autoscaling_group" "dv-scalegrp-terra" {
     name = aws_launch_template.dv-launchtemplate-terraf.id
     version = "$Latest"
   }
-  availability_zones = [us-east-1a, us-east-1b]
+  #availability_zones = [data.aws_availability_zones.all.names]
   vpc_zone_identifier = [aws_subnet.dv-subnet-pub-east1a-terra.id,aws_subnet.dv-subnet-pub-east1b-terra.id]
-  load_balancers = [
-    aws_elb.dv-elb-terra]
+  load_balancers = [aws_elb.dv-elb-terra.id]
   health_check_type = "ELB"
   tag {
     key = "Name"
