@@ -55,12 +55,12 @@ resource "aws_route_table" "dv-subnet-pub-terra" {
 }
 
 # Route table association with public subnets
-resource "aws_route_table_association" "a" {
+resource "aws_route_table_association" "dv-asoc-rt-to-subn1" {
   subnet_id      = "dv-subnet-pub-east1a-terra"
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
-resource "aws_route_table_association" "b" {
+resource "aws_route_table_association" "dv-asoc-rt-to-subn2" {
   subnet_id      = "dv-subnet-pub-east1b-terra"
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
