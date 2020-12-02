@@ -32,7 +32,7 @@ resource "aws_internet_gateway" "dv_igw" {
 
 resource "aws_subnet" "dv-subnet-pub-east1a-terra" {
   cidr_block = "10.0.1.0/24"
-  vpc_id = "${aws_vpc.dv-vpc-terra.id}"
+  vpc_id = aws_vpc.dv-vpc-terra.id
   availability_zone = "us-east-1a"
   tags = {
     Name = "dv-subnet-pub-east1a-terra"
@@ -42,7 +42,7 @@ resource "aws_subnet" "dv-subnet-pub-east1a-terra" {
 
 resource "aws_subnet" "dv-subnet-pub-east1b-terra" {
   cidr_block = "10.0.2.0/24"
-  vpc_id = "${aws_vpc.dv-vpc-terra.id}"
+  vpc_id = aws_vpc.dv-vpc-terra.id
   availability_zone = "us-east-1b"
   tags = {
     Name = "dv-subnet-pub-east1b-terra"
@@ -65,12 +65,12 @@ resource "aws_route_table" "dv-subnet-pub-terra" {
 # Route table association with public subnets
 resource "aws_route_table_association" "a" {
   subnet_id      = "dv-subnet-pub-east1a-terra"
-  route_table_id = "${aws_route_table.dv-subnet-pub-terra.id}"
+  route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
 resource "aws_route_table_association" "b" {
   subnet_id      = "dv-subnet-pub-east1b-terra"
-  route_table_id = "${aws_route_table.dv-subnet-pub-terra.id}"
+  route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
 resource "aws_launch_template" "dv-launchtemplate-terraf" {
@@ -93,7 +93,7 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
     }
   }
 
-  user_data = "${file("install_apache.sh")}"
+  user_data = file("install_apache.sh")
 }
 
 data "aws_availability_zones" "all" {}
