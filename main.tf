@@ -56,12 +56,12 @@ resource "aws_route_table" "dv-subnet-pub-terra" {
 
 # Route table association with public subnets
 resource "aws_route_table_association" "dv-asoc-rt-to-subn1" {
-  subnet_id      = "dv-subnet-pub-east1a-terra"
+  subnet_id      = aws_subnet.dv-subnet-pub-east1a-terra.id
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
 resource "aws_route_table_association" "dv-asoc-rt-to-subn2" {
-  subnet_id      = "dv-subnet-pub-east1b-terra"
+  subnet_id      = aws_subnet.dv-subnet-pub-east1b-terra.id
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
@@ -80,13 +80,6 @@ resource "aws_security_group" "dv-sg-ec2-8080-terra" {
 
 resource "aws_security_group" "dv-sg-elb-80-terra" {
   name = "dv-sg-elb-80-terra"
-  # Allow all outbound
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
   # Inbound HTTP from anywhere
   ingress {
     from_port   = 80
@@ -116,7 +109,6 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
       User = "Damian Vaisman"
     }
   }
-
   user_data = file("install_apache.sh")
 }
 
