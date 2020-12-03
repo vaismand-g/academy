@@ -114,7 +114,8 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
   instance_initiated_shutdown_behavior = "terminate"
   instance_type = "t2.micro"
   key_name = "dv-keypair-academy"
-  
+  user_data = filebase64("${path.module}/install_apache.sh")
+
   network_interfaces {
     associate_public_ip_address = true
     security_groups = [aws_security_group.dv-sg-terra.id]
