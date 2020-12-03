@@ -117,7 +117,7 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups = aws_security_group.dv-sg-terra.id
+    security_groups = [aws_security_group.dv-sg-terra.id]
   }
 
   tag_specifications {
@@ -141,7 +141,7 @@ resource "aws_alb" "dv-alb-terra" {
   internal = false
   ip_address_type = "ipv4"
   security_groups = [aws_security_group.dv-sg-terra.id]
-  subnets = [aws_subnet.dv-subnet-pub-east1b-terra, aws_subnet.dv-subnet-pub-east1a-terra]
+  subnets = [aws_subnet.dv-subnet-pub-east1b-terra.id, aws_subnet.dv-subnet-pub-east1a-terra.id]
   tags = {
     User = "damian.vaisman"
   }
