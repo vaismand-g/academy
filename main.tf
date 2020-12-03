@@ -113,8 +113,8 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
   image_id = "ami-04d29b6f966df1537"
   instance_initiated_shutdown_behavior = "terminate"
   instance_type = "t2.micro"
-  key_name = "dv-keypair-terra"
-
+  key_name = "dv-keypair-academy"
+  
   network_interfaces {
     associate_public_ip_address = true
     security_groups = [aws_security_group.dv-sg-terra.id]
@@ -126,14 +126,6 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
       User = "damian.vaisman"
     }
   }
-  user_data = <<EOF
-#! /bin/bash
-sudo yum update
-sudo yum install httpd -y
-sudo systemctl start httpd
-sudo systemctl stop firewalld
-sudo echo "Hello World from $(hostname -f)" > /var/www/html/index.html
-EOF
 }
 
 resource "aws_alb" "dv-alb-terra" {
@@ -168,10 +160,10 @@ resource "aws_alb_listener" "dv_alb_listener_terra" {
 }
 
 resource "aws_autoscaling_group" "dv-as-group-terra" {
-  name = "mb_as_group_terraform"
+  name = "dv-as-group-terra"
   vpc_zone_identifier = [aws_subnet.dv-subnet-pub-east1a-terra.id, aws_subnet.dv-subnet-pub-east1b-terra.id]
     launch_template {
-    name = aws_launch_template.dv-launchtemplate-terraf.id
+    name = aws_launch_template.dv-launchtemplate-terraf.name
     version = "$Latest"
   }
   max_size = 4
