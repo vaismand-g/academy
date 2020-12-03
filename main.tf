@@ -17,7 +17,7 @@ resource "aws_vpc" "dv-vpc-terra" {
   cidr_block = "10.0.0.0/16"
   tags = {
     Name = "dv-vpc-terra"
-    User = "Damian Vaisman"
+    User = "damian.vaisman"
   }
 }
 
@@ -32,7 +32,7 @@ resource "aws_subnet" "dv-subnet-pub-east1a-terra" {
   availability_zone = "us-east-1a"
   tags = {
     Name = "dv-subnet-pub-east1a-terra"
-    User = "Damian Vaisman"
+    User = "damian.vaisman"
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_subnet" "dv-subnet-pub-east1b-terra" {
   availability_zone = "us-east-1b"
   tags = {
     Name = "dv-subnet-pub-east1b-terra"
-    User = "Damian Vaisman"
+    User = "damian.vaisman"
   }
 }
 
@@ -65,30 +65,48 @@ resource "aws_route_table_association" "dv-asoc-rt-to-subn2" {
   route_table_id = aws_route_table.dv-subnet-pub-terra.id
 }
 
-resource "aws_security_group" "dv-sg-ec2-8080-terra" {
-  name = "dv-sg-ec2-8080-terra"
+resource "aws_security_group" "dv-sg-terra" {
+  name = "dv-sg-terra"
+  description = "Allow HTTP/S inbound traffic"
+  vpc_id = aws_vpc.dv-vpc-terra.id
+
   ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
+    description = "HTTP"
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    description = "HTTPS"
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SSH"
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+
   tags = {
-    User = "Damian Vaisman"
+    name = "dv-sg-terra"
+    User = "damian.vaisman"
   }
 }
-
-resource "aws_security_group" "dv-sg-elb-80-terra" {
-  name = "dv-sg-elb-80-terra"
-  # Inbound HTTP from anywhere
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 
 resource "aws_launch_template" "dv-launchtemplate-terraf" {
   name = "dv-launchtemplate-terraf"
@@ -99,64 +117,70 @@ resource "aws_launch_template" "dv-launchtemplate-terraf" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups = [aws_security_group.dv-sg-ec2-8080-terra.id]
+    security_groups = aws_security_group.dv-sg-terra.id
   }
 
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "test"
-      User = "Damian Vaisman"
+      User = "damian.vaisman"
     }
   }
-  user_data = file("install_apache.sh")
+  user_data = <<EOF
+#! /bin/bash
+sudo yum update
+sudo yum install httpd -y
+sudo systemctl start httpd
+sudo systemctl stop firewalld
+sudo echo "Hello World from $(hostname -f)" > /var/www/html/index.html
+EOF
 }
 
-data "aws_availability_zones" "all" {}
-
-
-resource "aws_elb" "dv-elb-terra" {
-  name               = "dv-elb-terra"
-  security_groups    = [aws_security_group.dv-sg-elb-80-terra.id]
-  availability_zones = data.aws_availability_zones.all.names
-  health_check {
-    target              = "HTTP:8080/"
-    interval            = 30
-    timeout             = 3
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
-
-  # Adding a listener for incoming HTTP requests.
-  listener {
-    lb_port           = 80
-    lb_protocol       = "http"
-    instance_port     = 8080
-    instance_protocol = "http"
+resource "aws_alb" "dv-alb-terra" {
+  name = "dv-alb-terra"
+  internal = false
+  ip_address_type = "ipv4"
+  security_groups = [aws_security_group.dv-sg-terra.id]
+  subnets = [aws_subnet.dv-subnet-pub-east1b-terra, aws_subnet.dv-subnet-pub-east1a-terra]
+  tags = {
+    User = "damian.vaisman"
   }
 }
 
-resource "aws_autoscaling_group" "dv-scalegrp-terra" {
-  max_size = 4
-  min_size = 0
-  desired_capacity = 0
-  launch_template {
+resource "aws_alb_target_group" "dv-alb-target-group-terra" {
+  name = "dv-alb-target-group-terra"
+  port = 80
+  protocol = "HTTP"
+  vpc_id = aws_vpc.dv-vpc-terra.id
+  tags = {
+    User = "damian.vaisman"
+  }
+}
+
+resource "aws_alb_listener" "dv_alb_listener_terra" {
+  load_balancer_arn = aws_alb.dv-alb-terra.id
+  port = 80
+  protocol = "HTTP"
+  default_action {
+    type = "forward"
+    target_group_arn = aws_alb_target_group.dv-alb-target-group-terra.id
+  }
+}
+
+resource "aws_autoscaling_group" "dv-as-group-terra" {
+  name = "mb_as_group_terraform"
+  vpc_zone_identifier = [aws_subnet.dv-subnet-pub-east1a-terra.id, aws_subnet.dv-subnet-pub-east1b-terra.id]
+    launch_template {
     name = aws_launch_template.dv-launchtemplate-terraf.id
     version = "$Latest"
   }
-  #availability_zones = [data.aws_availability_zones.all.names]
-  vpc_zone_identifier = [aws_subnet.dv-subnet-pub-east1a-terra.id,aws_subnet.dv-subnet-pub-east1b-terra.id]
-  load_balancers = [aws_elb.dv-elb-terra.id]
-  health_check_type = "ELB"
+  max_size = 4
+  min_size = 0
+  desired_capacity = 0
+  target_group_arns = [aws_alb_target_group.dv-alb-target-group-terra.id]
   tag {
-    key = "Name"
-    value = "dv-scalegrp-terra"
+    key = "User"
     propagate_at_launch = true
+    value = "damian.vaisman"
   }
 }
-
-# added comments - pending ask Homero
-#output "elb_dns_name" {
-#  value       = aws_elb.sample.dns_name
-#  description = "The domain name of the load balancer"
-#}
